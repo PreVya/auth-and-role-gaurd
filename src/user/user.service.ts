@@ -4,6 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { StringifyOptions } from 'querystring';
 
 @Injectable()
 export class UserService {
@@ -22,6 +23,11 @@ export class UserService {
 
   async findOne(id: string) {
     return await this.userRepository.findOne({where:{id}});
+  }
+
+  async findOneByFirebaseUid(firebaseUid:string){
+    const user = await this.userRepository.findOneBy({firebaseUid});
+    return user;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {

@@ -1,4 +1,19 @@
-import { SetMetadata } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { Request } from 'express';
 
-export const ROLES_KEY = 'roles';
-export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+@Injectable()
+export class RoleGuard implements CanActivate {
+  constructor(private requiredRoles: string[]) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const req: Request = context.switchToHttp().getRequest();
+    const user = req['user'];
+
+    if (!user) throw new ForbiddenException('User not authenticated');
+    if (!this.requiredRoles.includes(user.role)) {
+      throw new ForbiddenException(`Access denied! Requires one of: ${this.requiredRoles.join(', ')}`);
+    }
+
+    return true;
+  }
+}

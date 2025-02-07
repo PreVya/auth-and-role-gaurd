@@ -1,30 +1,24 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import * as fs from 'fs';
-import { using } from "rxjs";
+import { UserService } from '../user/user.service';
 
 @Injectable()
-export class AuthService{
-    constructor()
-    {
-        const serviceAcc = JSON.parse(fs.readFileSync('firebase-admin.json','utf-8'));
-        if(!admin.app.length){
-            admin.initializeApp({
-                credential:admin.credential.cert(serviceAcc),
-            })
-        }
-    }
+export class AuthService {
+  constructor(private userService: UserService) {}
 
-    async verifyToken(token:string){
-        return await admin.auth().verifyIdToken(token);
-    }
+  async validateUser(token: string) {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      const firebaseUid = decodedToken.uid;
 
-    async setRole(uid:string,role:string){
-        return admin.auth().setCustomUserClaims(uid,{role});
-    }
+      // Fetch user from NeonDB using userService
+      const user = await this.userService.findOneByFirebaseUid(firebaseUid);
 
-    async getRole(uid:string){
-        const userRecord = await admin.auth().getUser(uid);
-        return userRecord.customClaims?.role || 'user';
+      if (!user) throw new UnauthorizedException('User not found in database');
+
+      return { uid: user.firebaseUid, email: user.email, role: user.role };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid Firebase token');
     }
+  }
 }
